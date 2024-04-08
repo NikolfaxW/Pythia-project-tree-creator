@@ -37,6 +37,8 @@ int main() {
 
     double R = 0.4;
     double pTmin_jet = 5, pThadron = 0.2;
+    int triggerId = 421; //D_0
+    double pTMinTrig = 0.0;
 
     TString description = "Number of events: " + std::to_string(pythia.mode("Main:numberOfEvents"));
 
@@ -60,6 +62,20 @@ int main() {
         particles_histogram.clear();
         stable_particles.clear();
         if (!pythia.next()) continue;
+
+        //coppied
+        int idxD = -1;
+        for (int i = pythia.event.size() - 1; i > 0; i--) {
+            if (pythia.event[i].idAbs() == triggerId && pythia.event[i].pT() >= pTMinTrig) {
+                idxD = i;
+//                pt = pythia.event[i].pT();
+//                eta = pythia.event[i].eta();
+                break;
+            }
+        }
+        //
+
+
 
         for (int i = 0; i < event.size(); ++i) {
             auto &p = event[i];
