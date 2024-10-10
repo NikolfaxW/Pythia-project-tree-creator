@@ -105,7 +105,7 @@ int main() {
         fjInputs.clear();
         for (int i = 0; i < event.size(); ++i) { // saves particles in order to make jets
             auto & p = event[i];
-            if(not event[i].isFinal())
+            if(not event[i].isFinal() &&  i != idxD)
                 continue;
             pTemp = p.p();
             if(p.idAbs() == 22) //changes mass for any other particle except photons to pion mass
