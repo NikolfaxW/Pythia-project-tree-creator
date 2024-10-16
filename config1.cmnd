@@ -1,4 +1,4 @@
-Main:numberOfEvents = 100
+Main:numberOfEvents = 10000
 Main:timesAllowErrors = 100
 
 

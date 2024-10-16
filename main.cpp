@@ -164,6 +164,7 @@ int main() {
                         break;
                     }
                 }
+                if(hasD_0 == 0) continue;
                 EVI = iEvent;
                 pT = jet.pt();
                 gamma = jet.rapidity();
