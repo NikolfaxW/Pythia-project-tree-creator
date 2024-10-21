@@ -235,7 +235,7 @@ int main(int argc, char* argv[]) {
 
                     d0Jet = true;
 
-                    zvalue = (JetPx*HFPx + JetPy*HFPy)/(JetPt * JetPt);
+                    zvalue = (JetPx*HFPx + JetPy*HFPy)/(JetPt * JetPt);//! zvalue
 
                     //LOG_INFO << Form("Jet found with pT: %f, D0 with pT: %f, z: %f", MCJetPt, MCD0Pt, zvalue) << endl;
                 }

@@ -39,11 +39,11 @@ int main() {
 
     TFile *file = new TFile("../results/Jet_tree2.root", "RECREATE"); //create a file to store the tree as an output
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
-    Float_t pT, gamma, phi, hasD_0, EVI; //variables to store data and used in tree
+    Float_t pT, rapidity, phi, hasD_0, EVI; //variables to store data and used in tree
     std::list<particleUnit> j_constituents;
     T->Branch("EventID", &EVI, "EventID"); //set tree branches
     T->Branch("pT", &pT, "pT");
-    T->Branch("eta", &gamma, "eta");
+    T->Branch("eta", &rapidity, "eta");
     T->Branch("phi", &phi, "phi");
     T->Branch("D_0", &hasD_0, "D_0");
 
@@ -120,7 +120,7 @@ int main() {
                 if(hasD_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
                 EVI = iEvent;
                 pT = jet.pt();
-                gamma = jet.rapidity();
+                rapidity = jet.rapidity();
                 phi = jet.phi();
                 T->Fill(); //saves jet parameters to the tree as a new entry
             }
