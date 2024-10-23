@@ -112,28 +112,24 @@ void mainSec(int numThreads, TTree *&T, Float_t &D_0_Pt, Float_t &Jet_Pt, Float_
             selectedJets = eta_selector(jets); //applies the eta selector to the jets
 
             for (const auto &jet: selectedJets) { //loop through all jets
-                {
-                    std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
-                    hasD_0 = 0;
-                    for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
-                        if (c.user_info<MyInfo>().pdg_id() == triggerId) {
-                            z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
-                            D_0_Pt = fjInputs[c.user_info<MyInfo>().id()].pt(); //saves pT of the D_0 particle
-                            hasD_0 = 1;
-                            break;
-                        }
+                int tempHas_D_0 = 0;
+                for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
+                    if (c.user_info<MyInfo>().pdg_id() == triggerId) {
+                        z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
+                        D_0_Pt = fjInputs[c.user_info<MyInfo>().id()].pt(); //saves pT of the D_0 particle
+                        tempHas_D_0 = 1;
+                        break;
                     }
+                }
+                if(tempHas_D_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
+                hasD_0 = tempHas_D_0;
+                {
 
-                    if (hasD_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
-
+                    //! Not safe to fill the tree from multiple threads
+                    std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
                     EVI = iEvent;
                     Jet_Pt = jet.pt();
                     rapidity = jet.rapidity();
-                    //! Not safe to fill the tree from multiple threads
-
-//
-//                T->Fill(); //saves jet parameters to the tree as a new entry
-//                safeFill(T);
                     T->Fill();  // Fill the data vector safely
                 }
             }
