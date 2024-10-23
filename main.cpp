@@ -39,12 +39,13 @@ int main() {
 
     TFile *file = new TFile("../results/Jet_tree2.root", "RECREATE"); //create a file to store the tree as an output
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
-    Float_t pT, rapidity, phi, hasD_0, EVI; //variables to store data and used in tree
+    Float_t D_0_Pt,Jet_Pt , rapidity, hasD_0, EVI, z_val; //variables to store data and used in tree
     std::list<particleUnit> j_constituents;
     T->Branch("EventID", &EVI, "EventID"); //set tree branches
-    T->Branch("pT", &pT, "pT");
+    T->Branch("z_val", &z_val, "z_val");
+    T->Branch("D_0_Pt", &D_0_Pt, "D_0_Pt");
+    T->Branch("pT", &Jet_Pt, "pT");
     T->Branch("eta", &rapidity, "eta");
-    T->Branch("phi", &phi, "phi");
     T->Branch("D_0", &hasD_0, "D_0");
 
     std::map<TString, fastjet::JetDefinition> jetDefs; //map to store jet definitions
@@ -102,7 +103,7 @@ int main() {
 
 
         for (auto jetDef: jetDefs) { //for each jet definition runs jet clustering sequence, then saves it to ROOT tree
-            selectedJets.clear(); //empties the vector of jets - prevents from saving jets from previous event
+            selectedJets.clear(); //empties the vector of jets - prevents from saving jets from previous e2vent
             fastjet::ClusterSequence clusterSequence(fjInputs, jetDef.second); //sets up the cluster sequence
             auto jets = sorted_by_pt(clusterSequence.inclusive_jets(0)); //runs the clustering and sorts jets by pT
             fastjet::Selector eta_selector = fastjet::SelectorEtaRange(-1 + R, 1 - R); // Selects jets with |eta| < 1-R
@@ -112,16 +113,18 @@ int main() {
                 hasD_0 = 0;
                 for(const auto& c : jet.constituents() ){ //loop through all jet constituents to check if D_0 is there
                     if(c.user_info<MyInfo>().pdg_id() == triggerId){
+                        z_val = (jet.px()*c.px() + jet.py()*jet.py())/jet.pt2();
+                        D_0_Pt = fjInputs[c.user_info<MyInfo>().id()].pt(); //saves pT of the D_0 particle
                         hasD_0 = 1;
                         break;
                     }
                 }
 
                 if(hasD_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
+
                 EVI = iEvent;
-                pT = jet.pt();
+                Jet_Pt = jet.pt();
                 rapidity = jet.rapidity();
-                phi = jet.phi();
                 T->Fill(); //saves jet parameters to the tree as a new entry
             }
 
