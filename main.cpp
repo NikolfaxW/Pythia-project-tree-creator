@@ -42,7 +42,12 @@ protected:
 void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Float_t &Jet_Pt, Float_t &rapidity, Float_t &hasD_0,
              Float_t &EVI, Float_t &z_val, unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found) {
     Pythia8::Pythia pythia; //create pythia object
-    pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
+
+    {
+        std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
+        pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
+    }
+
     pythia.readString("Random:setSeed = on");  // Enable setting of the seed
     pythia.readString("Random:seed = " + seed);
     pythia.init();
@@ -76,7 +81,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
         int idxD = -1; // to store index of the D_0 particle in the event
         for (int i = pythia.event.size() - 1; i > 0; i--) { //goes through all particles generated in event
             if (pythia.event[i].idAbs() == triggerId &&
-                pythia.event[i].pT() >= pTMinTrig) { //finds D_0 particle with required pT cut
+                pythia.event[i].pT() >= pTMinTrig ) { //finds D_0 particle with required pT cut
                 idxD = i; //saved its index in the event
                 break;
             }

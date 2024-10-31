@@ -14,3 +14,7 @@ HardQCD:all = on
 PhaseSpace:pTHatMin = 5
 
 
+
+421:mayDecay = 0    ! switch off Dzero decays
+
+
