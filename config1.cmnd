@@ -11,7 +11,7 @@ Next:numberShowEvent = 0
 
 Beams:eCM = 200
 HardQCD:all = on
-PhaseSpace:pTHatMin = 5
+PhaseSpace:pTHatMin = 5 ! to be romved
 
 
 

@@ -92,7 +92,8 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
         fjInputs.clear(); //clears the vector of particles to be clustered
         for (int i = 0; i < event.size(); ++i) { // saves particles in order to make jets
             auto &p = event[i];
-            if (!event[i].isFinal() && i != idxD) //skips particles that are not final state or not D_0
+            if (!event[i].isFinal()) //! HAS TO BE ONLY FINAL -  ROMVE other cut
+                //skips particles that are not final state or not D_0
                 continue;
             pTemp = p.p();
             if (p.idAbs() == 22) //changes mass for any other particle except photons to pion mass
@@ -152,7 +153,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
 
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 10000000;
+    unsigned int requiredNumberOfD_0 = 10000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
@@ -163,7 +164,7 @@ int main() {
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
 
-    Float_t D_0_Pt, Jet_Pt, rapidity, hasD_0, EVI, z_val; //variables to store data and used in tree
+    Float_t D_0_Pt = -999, Jet_Pt = -999, rapidity = -999, hasD_0 = -1, EVI = -1, z_val = -999; //variables to store data and used in tree
 
     T->Branch("EventID", &EVI, "EventID"); //set tree branches
     T->Branch("z_val", &z_val, "z_val");
