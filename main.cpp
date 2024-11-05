@@ -39,7 +39,14 @@ protected:
 
 //!pTmin_jet - minimum pT for jets is not used
 
-void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Float_t &Jet_Pt, Float_t &rapidity,
+void showProgressBar(int progress, int total) {
+    float ratio = static_cast<float>(progress) / total;
+    std::cout << "(required number of D_0 found: " << progress << " | " << total << ") ";
+    std::cout << int(ratio * 100.0) << "%\r";
+    std::cout.flush();
+}
+
+void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
              Float_t &z_val, unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found,
              Float_t l11, Float_t l105, Float_t l115, Float_t l12, Float_t l13, Float_t l20) {
     Pythia8::Pythia pythia; //create pythia object
@@ -65,7 +72,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
     double mTemp; //This variable are needed to recount momentum after particle mass resets
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
-    Float_t temp_z_val, temp_D_0_p_t, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20, R_frac, pT_frac;
+    Float_t temp_z_val, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20, R_frac, pT_frac;
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
             fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
@@ -132,7 +139,6 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
                 }
                 if(tempHas_D_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
 
-
                 temp_l11 = 0;
                 temp_l105 = 0;
                 temp_l115 = 0;
@@ -142,7 +148,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
 
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
                     temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
-                    temp_D_0_p_t = c.pt(); //saves pT of the D_0 particle
+                    temp_D_0_pT = c.pt(); //saves pT of the D_0 particle
                     pT_frac = c.pt() / jet.pt();
                     R_frac = sqrt(pow(jet.rapidity() - c.rapidity(), 2) + pow(jet.phi() - c.phi(), 2));
                     temp_l11 += pT_frac * R_frac;
@@ -153,6 +159,8 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
                     temp_l20 += pow(pT_frac,2);
 
                 }
+
+
                 {
                     //! Not safe to fill the tree from multiple threads
                     std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
@@ -162,13 +170,13 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
                     l12 = temp_l12;
                     l13 = temp_l13;
                     l20 = temp_l20;
-                    D_0_Pt = temp_D_0_p_t;
+                    D_0_pT = temp_D_0_pT;
                     z_val = temp_z_val;
                     Jet_Pt = jet.pt();
                     rapidity = jet.rapidity();
                     T->Fill();  // Fill the data vector safely
                     ++numberOfD_0Found;
-                    if(numberOfD_0Found % 100 == 0) std::cout << numberOfD_0Found << " of D_0 instaces were found,"<< std::endl;
+                    if(numberOfD_0Found % 10 == 0) showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
                 }
             }
 
@@ -180,7 +188,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
   
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 10000;
+    unsigned int requiredNumberOfD_0 = 1000000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
@@ -190,7 +198,7 @@ int main() {
     std::string filename = "jet tree, cut:[D_0 n =" + std::to_string(requiredNumberOfD_0) + ", 1+ GeV].root";
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
-    Float_t D_0_Pt = -999, Jet_Pt = -999, rapidity = -999, EVI = -1, z_val = -999; //variables to store data and used in tree
+    Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
     Float_t l11, l105, l115, l12, l13, l20;
     //set tree branches
 
@@ -201,12 +209,12 @@ int main() {
     T->Branch("l13", &l13, "l13");
     T->Branch("l20", &l20, "l20");
     T->Branch("z_val", &z_val, "z_val");
-    T->Branch("D_0_Pt", &D_0_Pt, "D_0_Pt");
-    T->Branch("pT", &Jet_Pt, "pT");
+    T->Branch("D_0_pT", &D_0_pT, "D_0_pT");
+    T->Branch("jet_pT", &Jet_pT, "jet_pT");
     T->Branch("eta", &rapidity, "eta");
 
     for (int i = 0; i < numThreads; i++)
-        alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_Pt), std::ref(Jet_Pt), std::ref(rapidity),
+        alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_pT), std::ref(Jet_pT), std::ref(rapidity),
                                              std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0), std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20));
 
     for (int i = 0; i < numThreads; i++) {
