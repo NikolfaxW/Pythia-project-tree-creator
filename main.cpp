@@ -39,8 +39,9 @@ protected:
 
 //!pTmin_jet - minimum pT for jets is not used
 
-void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Float_t &Jet_Pt, Float_t &rapidity, Float_t &hasD_0,
-             Float_t &EVI, Float_t &z_val, unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found) {
+void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Float_t &Jet_Pt, Float_t &rapidity,
+             Float_t &z_val, unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found,
+             Float_t l11, Float_t l105, Float_t l115, Float_t l12, Float_t l13, Float_t l20) {
     Pythia8::Pythia pythia; //create pythia object
 
     {
@@ -64,6 +65,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
     double mTemp; //This variable are needed to recount momentum after particle mass resets
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
+    Float_t temp_z_val, temp_D_0_p_t, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20, R_frac, pT_frac;
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
             fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
@@ -112,7 +114,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
             continue;
         }
 
-        Float_t tempD_0_p_t;
+
         for (auto jetDef: jetDefs) { //for each jet definition runs jet clustering sequence, then saves it to ROOT tree
             selectedJets.clear(); //empties the vector of jets - prevents from saving jets from previous e2vent
             fastjet::ClusterSequence clusterSequence(fjInputs, jetDef.second); //sets up the cluster sequence
@@ -124,19 +126,44 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
                 int tempHas_D_0 = 0;
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
                     if (c.user_info<MyInfo>().pdg_id() == triggerId) {
-                        z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
-                        tempD_0_p_t = c.pt(); //saves pT of the D_0 particle
                         tempHas_D_0 = 1;
                         break;
                     }
                 }
                 if(tempHas_D_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
-                hasD_0 = tempHas_D_0;
+
+
+                temp_l11 = 0;
+                temp_l105 = 0;
+                temp_l115 = 0;
+                temp_l12 = 0;
+                temp_l13 = 0;
+                temp_l20 = 0;
+
+                for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
+                    temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
+                    temp_D_0_p_t = c.pt(); //saves pT of the D_0 particle
+                    pT_frac = c.pt() / jet.pt();
+                    R_frac = sqrt(pow(jet.rapidity() - c.rapidity(), 2) + pow(jet.phi() - c.phi(), 2));
+                    temp_l11 += pT_frac * R_frac;
+                    temp_l105 += pT_frac * pow(R_frac, 0.5);
+                    temp_l115 += pT_frac * pow(R_frac, 1.5);
+                    temp_l12 += pT_frac * pow(R_frac, 2);
+                    temp_l13 += pT_frac * pow(R_frac, 3);
+                    temp_l20 += pow(pT_frac,2);
+
+                }
                 {
                     //! Not safe to fill the tree from multiple threads
                     std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
-                    D_0_Pt = tempD_0_p_t;
-                    EVI = iEvent;
+                    l11 = temp_l11;
+                    l105 = temp_l105;
+                    l115 = temp_l115;
+                    l12 = temp_l12;
+                    l13 = temp_l13;
+                    l20 = temp_l20;
+                    D_0_Pt = temp_D_0_p_t;
+                    z_val = temp_z_val;
                     Jet_Pt = jet.pt();
                     rapidity = jet.rapidity();
                     T->Fill();  // Fill the data vector safely
@@ -150,7 +177,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_Pt, Floa
 
 
 }
-
+  
 
 int main() {
     unsigned int requiredNumberOfD_0 = 10000;
@@ -163,20 +190,25 @@ int main() {
     std::string filename = "jet tree, cut:[D_0 n =" + std::to_string(requiredNumberOfD_0) + ", 1+ GeV].root";
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
+    Float_t D_0_Pt = -999, Jet_Pt = -999, rapidity = -999, EVI = -1, z_val = -999; //variables to store data and used in tree
+    Float_t l11, l105, l115, l12, l13, l20;
+    //set tree branches
 
-    Float_t D_0_Pt = -999, Jet_Pt = -999, rapidity = -999, hasD_0 = -1, EVI = -1, z_val = -999; //variables to store data and used in tree
-
-    T->Branch("EventID", &EVI, "EventID"); //set tree branches
+    T->Branch("l11", &l11, "l11");
+    T->Branch("l105", &l105, "l105");
+    T->Branch("l115", &l115, "l115");
+    T->Branch("l12", &l12, "l12");
+    T->Branch("l13", &l13, "l13");
+    T->Branch("l20", &l20, "l20");
     T->Branch("z_val", &z_val, "z_val");
     T->Branch("D_0_Pt", &D_0_Pt, "D_0_Pt");
     T->Branch("pT", &Jet_Pt, "pT");
     T->Branch("eta", &rapidity, "eta");
-    T->Branch("D_0", &hasD_0, "D_0");
 
-    for (int i = 0; i < numThreads; i++) {
-        alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_Pt), std::ref(Jet_Pt), std::ref(rapidity), std::ref(hasD_0), std::ref(EVI),
-                                             std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0));
-    }
+    for (int i = 0; i < numThreads; i++)
+        alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_Pt), std::ref(Jet_Pt), std::ref(rapidity),
+                                             std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0), std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20));
+
     for (int i = 0; i < numThreads; i++) {
         alocatedThreads[i]->join();
         std::cout << "Thread " << i + 1 << " joined" << std::endl;

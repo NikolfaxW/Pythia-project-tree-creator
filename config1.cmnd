@@ -11,10 +11,13 @@ Next:numberShowEvent = 0
 
 Beams:eCM = 200
 HardQCD:all = on
-PhaseSpace:pTHatMin = 5 ! to be romved
-
-
 
 421:mayDecay = 0    ! switch off Dzero decays
+
+
+Print:quiet = on
+Init:showProcesses = off
+Init:showChangedSettings = off
+Init:showAllSettings = off
 
 
