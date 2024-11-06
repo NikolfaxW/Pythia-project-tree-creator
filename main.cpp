@@ -197,14 +197,14 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
   
 
 int main() {
-            unsigned int requiredNumberOfD_0 = 10000;
+            unsigned int requiredNumberOfD_0 = 10;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
 //    unsigned int numThreads = 2;
     std::thread **alocatedThreads = new std::thread *[numThreads];
     std::string pathToTheFile = "../results/";
-    std::string filename = "jet tree, cut:[D_0 n =" + std::to_string(requiredNumberOfD_0) + ", 1+ GeV].root";
+    std::string filename = "jet tree, cut [D_0 n =" + std::to_string(requiredNumberOfD_0) + ", 1+ GeV].root";
     TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
     Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
