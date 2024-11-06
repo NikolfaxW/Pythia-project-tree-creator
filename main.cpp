@@ -25,15 +25,19 @@
 //simple class to store additional info for fastjet
 class MyInfo : public fastjet::PseudoJet::UserInfoBase {
 public:
-    MyInfo(const int &id, const int &i) : _pdg_id(id), _id(i) {}  //stores ddg codes of the particle
+    MyInfo(const int &id, const int &i, const bool & uncharged) : _pdg_id(id), _id(i), _uncharged(uncharged) {}  //stores ddg codes of the particle
 
     int pdg_id() const { return _pdg_id; }
 
     int id() const { return _id; }
 
+    bool uncharged() const { return _uncharged;}
+
 protected:
     int _pdg_id;
     int _id;
+    bool _uncharged;
+
 
 };
 
@@ -48,7 +52,7 @@ void showProgressBar(int progress, int total) {
 
 void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
              Float_t &z_val, unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found,
-             Float_t l11, Float_t l105, Float_t l115, Float_t l12, Float_t l13, Float_t l20) {
+             Float_t l11, Float_t l105, Float_t l115, Float_t l12, Float_t l13, Float_t l20, bool &hasUncharged){
     Pythia8::Pythia pythia; //create pythia object
 
     {
@@ -73,6 +77,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
     Float_t temp_z_val, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20, R_frac, pT_frac;
+    Bool_t temp_hasUncharged;
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
             fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
@@ -101,8 +106,8 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
         fjInputs.clear(); //clears the vector of particles to be clustered
         for (int i = 0; i < event.size(); ++i) { // saves particles in order to make jets
             auto &p = event[i];
-            if (!event[i].isFinal()) //! HAS TO BE ONLY FINAL -  ROMVE other cut
-                //skips particles that are not final state or not D_0
+            if (!event[i].isFinal() || event[i].isCharged())
+                //skips particles that are not final state or charged
                 continue;
             pTemp = p.p();
             if (p.idAbs() == 22) //changes mass for any other particle except photons to pion mass
@@ -111,7 +116,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
                 mTemp = 0.13957;
             fastjet::PseudoJet particleTemp = fastjet::PseudoJet(p.px(), p.py(), p.pz(), sqrt(pTemp.pAbs2() + mTemp *
                                                                                                               mTemp)); //recounts 4 momentum and energy after mass reset
-            particleTemp.set_user_info(new MyInfo(p.idAbs(), i)); //adds additional info to the particle
+            particleTemp.set_user_info(new MyInfo(p.idAbs(), i, !event[i].isCharged())); //adds additional info to the particle
             fjInputs.push_back(particleTemp); //saves the particle to the vector to be clustered
         }
 
@@ -130,21 +135,22 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
             selectedJets = eta_selector(jets); //applies the eta selector to the jets
 
             for (const auto &jet: selectedJets) { //loop through all jets
-                int tempHas_D_0 = 0;
+                Bool_t tempHas_D_0 = false;
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
                     if (c.user_info<MyInfo>().pdg_id() == triggerId) {
-                        tempHas_D_0 = 1;
+                        tempHas_D_0 = true;
                         break;
                     }
                 }
-                if(tempHas_D_0 == 0) continue; // if there is not d_0 particle in the jet, skip it
-
+                if(not tempHas_D_0) continue; // if there is not d_0 particle in the jet, skip it;
                 temp_l11 = 0;
                 temp_l105 = 0;
                 temp_l115 = 0;
                 temp_l12 = 0;
                 temp_l13 = 0;
                 temp_l20 = 0;
+                temp_hasUncharged = false;
+
 
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
                     temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
@@ -157,6 +163,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
                     temp_l12 += pT_frac * pow(R_frac, 2);
                     temp_l13 += pT_frac * pow(R_frac, 3);
                     temp_l20 += pow(pT_frac,2);
+                    if(c.user_info<MyInfo>().uncharged() && c.user_info<MyInfo>().pdg_id() != triggerId) temp_hasUncharged = true;
 
                 }
 
@@ -188,7 +195,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
   
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 1000000;
+    unsigned int requiredNumberOfD_0 = 100;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
@@ -200,8 +207,10 @@ int main() {
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
     Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
     Float_t l11, l105, l115, l12, l13, l20;
+    Bool_t hasUncharged, hasD_0;
     //set tree branches
 
+    T->Branch("hasUncharged", &hasUncharged, "hasUncharged");
     T->Branch("l11", &l11, "l11");
     T->Branch("l105", &l105, "l105");
     T->Branch("l115", &l115, "l115");
@@ -215,7 +224,8 @@ int main() {
 
     for (int i = 0; i < numThreads; i++)
         alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_pT), std::ref(Jet_pT), std::ref(rapidity),
-                                             std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0), std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20));
+                                             std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0),
+                                             std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20), std::ref(hasUncharged));
 
     for (int i = 0; i < numThreads; i++) {
         alocatedThreads[i]->join();
