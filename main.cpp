@@ -135,14 +135,15 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
             selectedJets = eta_selector(jets); //applies the eta selector to the jets
 
             for (const auto &jet: selectedJets) { //loop through all jets
-                Bool_t tempHas_D_0 = false;
-                for (const auto &c: jet.constituents()) { //loop through all jet constituents to check if D_0 is there
+                Bool_t temp_Has_D_0 = false;
+                for (const auto &c: jet.constituents()) {//loop through all jet constituents to check if D_0 is there
+
                     if (c.user_info<MyInfo>().pdg_id() == triggerId) {
-                        tempHas_D_0 = true;
+                        temp_Has_D_0 = true;
                         break;
                     }
                 }
-                if(not tempHas_D_0) continue; // if there is not d_0 particle in the jet, skip it;
+                if(not temp_Has_D_0) continue; // if there is not d_0 particle in the jet, skip it;
                 temp_l11 = 0;
                 temp_l105 = 0;
                 temp_l115 = 0;
@@ -156,7 +157,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
                     temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
                     temp_D_0_pT = c.pt(); //saves pT of the D_0 particle
                     pT_frac = c.pt() / jet.pt();
-                    R_frac = sqrt(pow(jet.rapidity() - c.rapidity(), 2) + pow(jet.phi() - c.phi(), 2));
+                    R_frac = sqrt(pow(jet.rapidity() - c.rapidity(), 2) + pow(jet.phi() - c.phi(), 2)) / R;
                     temp_l11 += pT_frac * R_frac;
                     temp_l105 += pT_frac * pow(R_frac, 0.5);
                     temp_l115 += pT_frac * pow(R_frac, 1.5);
@@ -171,6 +172,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
                 {
                     //! Not safe to fill the tree from multiple threads
                     std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
+                    hasUncharged = temp_hasUncharged;
                     l11 = temp_l11;
                     l105 = temp_l105;
                     l115 = temp_l115;
@@ -195,7 +197,7 @@ void mainSec(int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Floa
   
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 100;
+            unsigned int requiredNumberOfD_0 = 10000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
@@ -207,7 +209,7 @@ int main() {
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
     Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
     Float_t l11, l105, l115, l12, l13, l20;
-    Bool_t hasUncharged, hasD_0;
+    Bool_t hasUncharged;
     //set tree branches
 
     T->Branch("hasUncharged", &hasUncharged, "hasUncharged");
@@ -229,7 +231,7 @@ int main() {
 
     for (int i = 0; i < numThreads; i++) {
         alocatedThreads[i]->join();
-        std::cout << "Thread " << i + 1 << " joined" << std::endl;
+        std::cout << std::endl << "Thread " << i + 1 << " joined" << std::endl;
     }
 
     T->Print(); //prints the tree structure
