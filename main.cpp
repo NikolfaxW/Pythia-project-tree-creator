@@ -197,7 +197,7 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
   
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 100;
+    unsigned int requiredNumberOfD_0 = 500000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
