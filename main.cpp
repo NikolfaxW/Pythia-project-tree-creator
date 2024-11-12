@@ -18,6 +18,8 @@
 #include "TFile.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
+#include "TVector2.h"
+#include "TMath.h"
 
 #include "particleUnit.h"
 
@@ -25,18 +27,18 @@
 //simple class to store additional info for fastjet
 class MyInfo : public fastjet::PseudoJet::UserInfoBase {
 public:
-    MyInfo(const int &id, const int &i, const bool & uncharged) : _pdg_id(id), _id(i), _uncharged(uncharged) {}  //stores ddg codes of the particle
+    MyInfo(const int &id, const int &i, const bool & is_charged) : _pdg_id(id), _id(i), _is_charged(is_charged) {}  //stores ddg codes of the particle
 
     int pdg_id() const { return _pdg_id; }
 
     int id() const { return _id; }
 
-    bool uncharged() const { return _uncharged;}
+    bool isCharged() const { return _is_charged;}
 
 protected:
     int _pdg_id;
     int _id;
-    bool _uncharged;
+    bool _is_charged;
 
 
 };
@@ -50,9 +52,14 @@ void showProgressBar(int progress, int total) {
     std::cout.flush();
 }
 
+Float_t delta_R(Float_t eta1, Float_t phi1, Float_t eta2, Float_t phi2) {
+    return TMath::Sqrt(pow(eta1 - eta2, 2) + pow(TVector2::Phi_mpi_pi(phi1 - phi2), 2));
+}
+
+
 void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
              Float_t &z_val, const unsigned int & requiredNumberOfD_0, unsigned int & numberOfD_0Found,
-             Float_t &l11, Float_t &l105, Float_t &l115, Float_t &l12, Float_t &l13, Float_t &l20, bool &hasUncharged){
+             Float_t &l11, Float_t &l105, Float_t &l115, Float_t &l12, Float_t &l13, Float_t &l20, bool &hasUncharged, bool R_frac_mistake, bool &pT_frac_mistake){
     Pythia8::Pythia pythia; //create pythia object
 
     {
@@ -77,7 +84,7 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
     Float_t temp_z_val, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20, R_frac, pT_frac;
-    bool temp_hasUncharged;
+    bool temp_hasUncharged, temp_R_frac_mistake, temp_pT_frac_mistake;
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
             fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
@@ -106,7 +113,7 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
         fjInputs.clear(); //clears the vector of particles to be clustered
         for (int i = 0; i < event.size(); ++i) { // saves particles in order to make jets
             auto &p = event[i];
-            if (event[i].isFinal() && event[i].isCharged() || event[i].idAbs() == triggerId) {
+            if (event[i].isFinal() || event[i].idAbs() == triggerId) { //checks if particle is final state or D_0
                 pTemp = p.p();
                 if (p.idAbs() == 22) //changes mass for any other particle except photons to pion mass
                     mTemp = 0;
@@ -114,7 +121,7 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
                     mTemp = 0.13957;
                 fastjet::PseudoJet particleTemp = fastjet::PseudoJet(p.px(), p.py(), p.pz(), sqrt(pTemp.pAbs2() + mTemp *
                                                                                                                   mTemp)); //recounts 4 momentum and energy after mass reset
-                particleTemp.set_user_info(new MyInfo(p.idAbs(), i, !event[i].isCharged())); //adds additional info to the particle
+                particleTemp.set_user_info(new MyInfo(p.idAbs(), i, event[i].isCharged())); //adds additional info to the particle
                 fjInputs.push_back(particleTemp); //saves the particle to the vector to be clustered
 
             }
@@ -138,8 +145,10 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
                 Bool_t temp_Has_D_0 = false;
                 for (const auto &c: jet.constituents()) {//loop through all jet constituents to check if D_0 is there
 
-                    if (c.user_info<MyInfo>().pdg_id() == triggerId) {
+                    if (c.user_info<MyInfo>().pdg_id() == triggerId) { // Only for D_0
                         temp_Has_D_0 = true;
+                        temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
+                        temp_D_0_pT = c.pt(); //saves pT of the D_0 particle
                         break;
                     }
                 }
@@ -151,20 +160,24 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
                 temp_l13 = 0;
                 temp_l20 = 0;
                 temp_hasUncharged = false;
-
+                temp_R_frac_mistake = false;
+                temp_pT_frac_mistake = false;
 
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to calculate l11, l105, l115, l12, l13, l20
-                    temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
-                    temp_D_0_pT = c.pt(); //saves pT of the D_0 particle
+
+                    if(c.user_info<MyInfo>().pdg_id() != triggerId || !c.user_info<MyInfo>().isCharged()) continue; //skip not D_0 and neutral particles
                     pT_frac = c.pt() / jet.pt();
-                    R_frac = sqrt(pow(jet.rapidity() - c.rapidity(), 2) + pow(jet.phi() - c.phi(), 2)) / R;
+                    R_frac = delta_R(jet.eta(), c.eta(), jet.phi(), c.phi()) / R;
+                    if(R_frac > 1) temp_R_frac_mistake = true;
+                    if(pT_frac> 1) temp_pT_frac_mistake = true;
+
                     temp_l11 += pT_frac * R_frac;
                     temp_l105 += pT_frac * pow(R_frac, 0.5);
                     temp_l115 += pT_frac * pow(R_frac, 1.5);
                     temp_l12 += pT_frac * pow(R_frac, 2);
                     temp_l13 += pT_frac * pow(R_frac, 3);
                     temp_l20 += pow(pT_frac,2);
-                    if(c.user_info<MyInfo>().uncharged() && c.user_info<MyInfo>().pdg_id() != triggerId) temp_hasUncharged = true;
+                    if(c.user_info<MyInfo>().isCharged() && c.user_info<MyInfo>().pdg_id() != triggerId) temp_hasUncharged = true;
 
                 }
 
@@ -183,6 +196,8 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
                     z_val = temp_z_val;
                     Jet_Pt = jet.pt();
                     rapidity = jet.rapidity();
+                    R_frac_mistake = temp_R_frac_mistake;
+                    pT_frac_mistake = temp_pT_frac_mistake;
                     T->Fill();  // Fill the data vector safely
                     ++numberOfD_0Found;
                     if(numberOfD_0Found % 10 == 0) showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
@@ -197,7 +212,7 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
   
 
 int main() {
-    unsigned int requiredNumberOfD_0 = 500000;
+    unsigned int requiredNumberOfD_0 = 10000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
@@ -209,9 +224,12 @@ int main() {
     TFile *file = new TFile( (pathToTheFile + filename).c_str(), "RECREATE"); //create a file to store the tree as an output
     Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
     Float_t l11, l105, l115, l12, l13, l20;
-    bool hasUncharged;
+    bool hasUncharged, R_frac_mistake, pT_frac_mistake;
     //set tree branches
 
+
+    T->Branch("R_frac_mistake", &R_frac_mistake, "R_frac_mistake");
+    T->Branch("pT_frac_mistake", &pT_frac_mistake, "pT_frac_mistake");
     T->Branch("hasUncharged", &hasUncharged, "hasUncharged");
     T->Branch("l11", &l11, "l11");
     T->Branch("l105", &l105, "l105");
@@ -227,7 +245,8 @@ int main() {
     for (int i = 0; i < numThreads; i++)
         alocatedThreads[i] = new std::thread(mainSec, numThreads, std::to_string(seed + i), std::ref(T), std::ref(D_0_pT), std::ref(Jet_pT), std::ref(rapidity),
                                              std::ref(z_val), std::ref(requiredNumberOfD_0), std::ref(foundNumberOfD_0),
-                                             std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20), std::ref(hasUncharged));
+                                             std::ref(l11), std::ref(l105), std::ref(l115), std::ref(l12), std::ref(l13), std::ref(l20),
+                                             std::ref(hasUncharged), std::ref(R_frac_mistake), std::ref(pT_frac_mistake));
 
     for (int i = 0; i < numThreads; i++) {
         alocatedThreads[i]->join();
