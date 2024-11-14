@@ -45,7 +45,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ROOT_CFLAGS} -O2 -pedantic -W -Wall -W
 # Add executable
 add_executable(Pythia-project-tree-creator main.cpp
 particleUnit.h
-particleUnit.cpp)
+particleUnit.cpp
+        MyInfo.h
+        functions.cpp
+        functions.h)
 
 # Convert ROOT_LIBS string to a list of libraries
 separate_arguments(ROOT_LIB_LIST UNIX_COMMAND "${ROOT_LIBS}")
