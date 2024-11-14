@@ -145,7 +145,7 @@ particleDictionarry::~particleDictionarry(){
 void particleDictionarry::printALL(){}
 std::string particleDictionarry::getStatusName(int i){
     if(statusNames.find(i) == statusNames.end())return std::to_string(i);
-    return statusNames[i];
+    return "(" +std::to_string(i) + ")" + statusNames[i];
 }
 std::string particleDictionarry::getIdABSName(int i){
     if (idABSNames.find(i) == idABSNames.end())return std::to_string(i);

@@ -54,7 +54,10 @@ void showProgressBar(int progress, int total) {
 }
 
 Float_t delta_R(Float_t eta1, Float_t phi1, Float_t eta2, Float_t phi2) {
-    return TMath::Sqrt(pow(eta1 - eta2, 2) + pow(TVector2::Phi_mpi_pi(phi1 - phi2), 2));
+    Float_t delta_eta= eta1 - eta2;
+    Float_t delta_phi = TVector2::Phi_mpi_pi(phi1 - phi2);
+//    std::cout << "delta_eta: " << delta_eta << " delta_phi: " << delta_phi << std::endl;
+    return TMath::Sqrt(pow(delta_eta, 2) + pow(delta_phi, 2));
 }
 
 void learnD_0JetsOrigin(const unsigned int requiredNumberOfD_0){
@@ -106,10 +109,10 @@ void learnD_0JetsOrigin(const unsigned int requiredNumberOfD_0){
         auto p = pythia.event[i];
         file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ]  =>  ";
         while(i != 0){
-            to_print = p.mother1() != p.mother2();
+//            to_print = p.mother1() != p.mother2();
             i = p.mother1();
             p = pythia.event[i];
-            if(to_print) file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ]  =>  ";
+            if(to_print) file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(abs(p.status())) << " ; " << i << " ]  =>  ";
 
         }
         file << "x\n";
@@ -226,15 +229,15 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
 
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to calculate l11, l105, l115, l12, l13, l20
 
-                    if(c.user_info<MyInfo>().pdg_id() != triggerId || !c.user_info<MyInfo>().isCharged()) continue; //skip not D_0 and neutral particles
+                    if(c.user_info<MyInfo>().pdg_id() != triggerId && !c.user_info<MyInfo>().isCharged()) continue; //skip not D_0 and neutral particles
                     pT_frac = c.pt() / jet.pt();
-                    R_frac = delta_R(jet.eta(), c.eta(), jet.phi(), c.phi()) / R;
-                    if(R_frac > 1) temp_R_frac_mistake = true;
+                    R_frac = delta_R(jet.eta(), jet.phi(), c.eta(), c.phi()) / R;
+                    if(R_frac > 1) { temp_R_frac_mistake = true; continue; }
                     if(pT_frac> 1) temp_pT_frac_mistake = true;
 
-                    temp_l11 += pT_frac * R_frac;
+                    temp_l11 += pT_frac*R_frac;
                     temp_l105 += pT_frac * pow(R_frac, 0.5);
-                    temp_l115 += pT_frac * pow(R_frac, 1.5);
+                    temp_l115 = pT_frac * pow(R_frac, 1.5);
                     temp_l12 += pT_frac * pow(R_frac, 2);
                     temp_l13 += pT_frac * pow(R_frac, 3);
                     temp_l20 += pow(pT_frac,2);
@@ -274,8 +277,8 @@ void mainSec(const int numThreads, std::string  seed, TTree *&T, Float_t &D_0_pT
 
 int main() {
 //    learnD_0JetsOrigin(100);
-
-    unsigned int requiredNumberOfD_0 = 100000;
+//
+    unsigned int requiredNumberOfD_0 = 200;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
