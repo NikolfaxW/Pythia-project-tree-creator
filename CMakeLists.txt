@@ -48,7 +48,9 @@ particleUnit.h
 particleUnit.cpp
         MyInfo.h
         functions.cpp
-        functions.h)
+        functions.h
+        jetStructure.h
+        jetStructure.cpp)
 
 # Convert ROOT_LIBS string to a list of libraries
 separate_arguments(ROOT_LIB_LIST UNIX_COMMAND "${ROOT_LIBS}")
