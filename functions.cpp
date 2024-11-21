@@ -10,6 +10,11 @@
 #include <string>
 #include <fstream>
 #include <cstdio>
+#include <deque>
+#include <vector>
+#include <algorithm>
+#include <chrono>
+#include <thread>
 
 #include "Pythia8/Pythia.h"
 #include "TVector2.h"
@@ -136,6 +141,10 @@ void learnD_0JetsOrigin(const unsigned int requiredNumberOfD_0){
 //            to_print = p.mother1() != p.mother2();
             i = p.mother1();
             p = pythia.event[i];
+            if(p.mother1() == p.mother2()){
+                file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(abs(p.status())) << " ; " << i << " ]  =>  ";
+                break;
+            }
             if(to_print) file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(abs(p.status())) << " ; " << i << " ]  =>  ";
 
         }
@@ -145,6 +154,110 @@ void learnD_0JetsOrigin(const unsigned int requiredNumberOfD_0){
 
 }
 
+void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
+    particleDictionarry dict;
+    Pythia8::Pythia pythia; //create pythia object
+    pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
+    pythia.init();
+
+    std::list<particleUnit> j_constituents;
+    std::map<TString, fastjet::JetDefinition> jetDefs; //map to store jet definitions
+
+    //parameters for jet finding and to make program less hardcoded
+    double R = 0.4; //jet radius
+    double pTmin_jet = 5, pThadron = 0.2; //minimum pT for jets and hadrons
+    int triggerId = 421; //!D_0 //pdg code of the particle to be found
+    double pTMinTrig = 1; //minimum pT for the particle to be found
+    double pTMaxTrig = 5.0;
+    double mTemp; //This variable are needed to recount momentum after particle mass resets
+    Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
+
+    //define jet finding algorithms here:
+    jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
+            fastjet::kt_algorithm, R, fastjet::E_scheme, fastjet::Best);
+    auto &event = pythia.event; //create a reference to the Pythia8 collision event
+    unsigned int numberOfD_0Found = 0;
+
+    std::ofstream file("../results/D_0-origins-structure.txt");
+    if (!file.is_open()){
+        std::cout <<  "Error opening file for writing." << std::endl;
+        return;
+    }
+
+    bool to_print = true;
+
+    std::deque<int> * mothers, * daughters, * temp;
+    mothers = new std::deque<int>;
+    daughters = new std::deque<int>;
+    std::vector<int> history;
+
+    for (int iEvent = 0; numberOfD_0Found < requiredNumberOfD_0; ++iEvent) { //loop over needed number of events
+        if (!pythia.next()) continue; //generate next event, if it is not possible, continue
+        int idxD = -1; // to store index of the D_0 particle in the event
+        int i = 0;
+        for (i = pythia.event.size() - 1; i > 0; i--) { //goes through all particles generated in event
+            if (pythia.event[i].idAbs() == triggerId &&
+                pythia.event[i].pT() >= pTMinTrig) { //finds D_0 particle with required pT cut
+                idxD = i; //saved its index in the event
+                break;
+            }
+        }
+        if (idxD == -1) //if there is no D_0 particle in the event, skip it to not waste resources
+        {
+            continue;
+        }
+        ++numberOfD_0Found;
+        auto p = pythia.event[i];
+
+        mothers->clear();
+        daughters->clear();
+        history.clear();
+
+        history.push_back(i);
+        daughters->push_back(i);
+        file << "\nD_0 # : " << numberOfD_0Found << std::endl;
+
+        while(!daughters->empty()){
+            while(!daughters->empty()){
+                i = daughters->front();
+                daughters->pop_front();
+                if(i == 0){
+                    continue;
+                }
+                p = pythia.event[i];
+                std::cout << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ] ";
+                file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ] ";
+//                if(history.end() != std::find(history.begin(), history.end(), p.mother1())){
+//                    mothers->push_back(p.mother1());
+//                    history.push_back(p.mother1());
+//                }
+                    mothers->push_back(p.mother1());
+                    history.push_back(p.mother1());
+                if(p.mother1() != p.mother2() || p.mother2() != 0 ){
+//                    if(history.end() != std::find(history.begin(), history.end(), p.mother2())){
+//                        mothers->push_back(p.mother2());
+//                        history.push_back(p.mother2());
+//                    }
+                    mothers->push_back(p.mother2());
+                    history.push_back(p.mother2());
+                }
+            }
+            file << "\n => \n";
+            std::cout  << std::endl << " => " << std::endl;
+            temp = mothers;
+            mothers = daughters;
+            daughters = temp;
+        }
+
+
+        file << " X \n\n";
+        std::cout << " X " << std::endl << std::endl;
+    }
+
+    delete mothers;
+    delete daughters;
+    file.close();
+}
 
 void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
              Float_t &z_val, const unsigned int &requiredNumberOfD_0, unsigned int &numberOfD_0Found,

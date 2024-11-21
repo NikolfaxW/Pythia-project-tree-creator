@@ -21,8 +21,9 @@
 
 int main() {
 //    learnD_0JetsOrigin(1);
+    learnD_0JetsOriginTest(20);
 
-    drawBlocksTest();
+//    drawBlocksTest();
 
 //    unsigned int requiredNumberOfD_0 = 200;
 //    unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
