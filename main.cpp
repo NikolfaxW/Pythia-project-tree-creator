@@ -21,7 +21,8 @@
 
 int main() {
 //    learnD_0JetsOrigin(1);
-    learnD_0JetsOriginTest(20);
+    learnD_0JetsOriginTest(10);
+
 
 //    drawBlocksTest();
 

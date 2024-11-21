@@ -13,13 +13,14 @@
 #include <deque>
 #include <vector>
 #include <algorithm>
-#include <chrono>
-#include <thread>
+#include <cmath>
 
 #include "Pythia8/Pythia.h"
 #include "TVector2.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
+#include "TCanvas.h"
+#include "TH2F.h"
 
 std::string createBlock( const unsigned int x, const unsigned int y, std::string fill, const unsigned int id, const unsigned int status, const unsigned int evi){
     std::string result = "<rect x = \"" + std::to_string(x) + "\" y = \"" + std::to_string(y) + "\" width = \"150\" height = \"100\" fill = \"" + fill + "\" stroke = \"black\" stroke-width = \"2\"></rect>\n";
@@ -183,8 +184,9 @@ void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
         std::cout <<  "Error opening file for writing." << std::endl;
         return;
     }
-
-    bool to_print = true;
+    TH1F *h1 = new TH1F("?", "?",
+                        30, 0, 30); // 50 bins from -5 to 5
+    h1->GetXaxis()->SetNdivisions(15);
 
     std::deque<int> * mothers, * daughters, * temp;
     mothers = new std::deque<int>;
@@ -213,9 +215,8 @@ void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
         daughters->clear();
         history.clear();
 
-        history.push_back(i);
         daughters->push_back(i);
-        file << "\nD_0 # : " << numberOfD_0Found << std::endl;
+        file << "\nD_0 # : " << numberOfD_0Found << " ; D_0 pT : " << p.pT() << std::endl;
 
         while(!daughters->empty()){
             while(!daughters->empty()){
@@ -225,25 +226,27 @@ void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
                     continue;
                 }
                 p = pythia.event[i];
-                std::cout << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ] ";
-                file << "[" << dict.getIdABSName(p.idAbs())  << " ; " << dict.getStatusName(p.status()) << " ; " << i << " ] ";
-//                if(history.end() != std::find(history.begin(), history.end(), p.mother1())){
-//                    mothers->push_back(p.mother1());
-//                    history.push_back(p.mother1());
-//                }
+                file << "[ idAbs : " << dict.getIdABSName(p.idAbs()) << "; id : " << p.id()  << " ; stat : " << dict.getStatusName(p.status()) << " ; EvI : " << i << " ; m1 : " << p.mother1() << " ; m2 : " << p.mother2() << " ; d1 " << p.daughter1() << " ; d2 : " << p.daughter2() << "  ] ";
+                if(p.status() == 21 || p.status() == -21){
+                    std::cout << "input" << std::endl;
+                    h1->Fill(p.idAbs());
+                }
+                if(history.end() == std::find(history.begin(), history.end(), p.mother1())){
                     mothers->push_back(p.mother1());
                     history.push_back(p.mother1());
-                if(p.mother1() != p.mother2() || p.mother2() != 0 ){
-//                    if(history.end() != std::find(history.begin(), history.end(), p.mother2())){
-//                        mothers->push_back(p.mother2());
-//                        history.push_back(p.mother2());
-//                    }
-                    mothers->push_back(p.mother2());
-                    history.push_back(p.mother2());
+                }
+//                    mothers->push_back(p.mother1());
+//                    history.push_back(p.mother1());
+                if(p.mother1() != p.mother2()){
+                    if(history.end() == std::find(history.begin(), history.end(), p.mother2())){
+                        mothers->push_back(p.mother2());
+                        history.push_back(p.mother2());
+                    }
+//                    mothers->push_back(p.mother2());
+//                    history.push_back(p.mother2());
                 }
             }
             file << "\n => \n";
-            std::cout  << std::endl << " => " << std::endl;
             temp = mothers;
             mothers = daughters;
             daughters = temp;
@@ -251,8 +254,13 @@ void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
 
 
         file << " X \n\n";
-        std::cout << " X " << std::endl << std::endl;
+        showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
     }
+    TCanvas *c1 = new TCanvas("?", "?", 800, 600);
+    h1->Draw();
+    c1->Update();
+
+    c1->SaveAs("../results/1DHistogram.png");
 
     delete mothers;
     delete daughters;

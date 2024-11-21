@@ -150,6 +150,6 @@ std::string particleDictionarry::getStatusName(int i){
 }
 std::string particleDictionarry::getIdABSName(int i){
     if (idABSNames.find(i) == idABSNames.end())return std::to_string(i);
-    return idABSNames[i];
+    return "(" + std::to_string(i) + ")"+idABSNames[i];
 
 }
