@@ -197,9 +197,9 @@ void learnD_0JetsOriginTest(const unsigned int requiredNumberOfD_0){
         if (!pythia.next()) continue; //generate next event, if it is not possible, continue
         int idxD = -1; // to store index of the D_0 particle in the event
         int i = 0;
-        //! pt cut removed
         for (i = pythia.event.size() - 1; i > 0; i--) { //goes through all particles generated in event
-            if (pythia.event[i].idAbs() == triggerId) { //finds D_0 particle with required pT cut
+            if (pythia.event[i].idAbs() == triggerId &&
+                pythia.event[i].pT() >= pTMinTrig) { //finds D_0 particle with required pT cut
                 idxD = i; //saved its index in the event
                 break;
             }
@@ -287,14 +287,12 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
     //parameters for jet finding and to make program less hardcoded
     double R = 0.4; //jet radius
     double pTmin_jet = 5, pThadron = 0.2; //minimum pT for jets and hadrons
-    int triggerId = 421; //pdg code of the particle to be found
-    //! there is a cut!!!
+    int triggerId = 421; //!D_0 //pdg code of the particle to be found
     double pTMinTrig = 1; //minimum pT for the particle to be found
     double pTMaxTrig = 5.0;
     double mTemp; //This variable are needed to recount momentum after particle mass resets
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
-    //!add initial z_val
-
+    ;
     Double_t R_frac, pT_frac, temp_z_val, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
 
     //define jet finding algorithms here:
@@ -360,7 +358,7 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
 
                     if (c.user_info<MyInfo>().pdg_id() == triggerId) { // Only for D_0
                         temp_Has_D_0 = true;
-                        temp_z_val = (jet.px() * c.px() + jet.py() * c.py()) / jet.pt2();
+                        temp_z_val = (jet.px() * c.px() + jet.py() * jet.py()) / jet.pt2();
                         temp_D_0_pT = c.pt(); //saves pT of the D_0 particle
                         break;
                     }
