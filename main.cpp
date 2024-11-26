@@ -26,7 +26,7 @@ int main() {
 
 //    drawBlocksTest();
 
-    unsigned int requiredNumberOfD_0 = 1000000; //! sim with 1mil for statistics
+    unsigned int requiredNumberOfD_0 = 100; //! sim with 1mil for statistics
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
     unsigned int numThreads = std::thread::hardware_concurrency();
     int seed = std::time(0) % (900000000 - numThreads);
