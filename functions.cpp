@@ -288,14 +288,14 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
     double R = 0.4; //jet radius
     double pTmin_jet = 5, pThadron = 0.2; //minimum pT for jets and hadrons
     int triggerId = 421; //pdg code of the particle to be found
-    //! there is a cut!!!
+
     double pTMinTrig = 1; //minimum pT for the particle to be found
     double pTMaxTrig = 5.0;
     double mTemp; //This variable are needed to recount momentum after particle mass resets
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
-    //!add initial z_val
 
-    Double_t R_frac, pT_frac, temp_z_val, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
+
+    Double_t R_frac, pT_frac, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
 
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
