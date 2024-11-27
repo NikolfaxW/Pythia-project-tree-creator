@@ -1,0 +1,5 @@
+C:\Windows\system32\wsl.exe --distribution Ubuntu --exec /bin/bash -c "export CMAKE_COLOR_DIAGNOSTICS=ON && export CLION_IDE=TRUE && export JETBRAINS_IDE=TRUE && cd '/home/nikolfax/programming/c++/Pythia-project-tree-creator/cmake-build-release' && /usr/bin/cmake -DCMAKE_BUILD_TYPE=Release -C 'CMakeLists(forstatic).txt' -G 'CodeBlocks - Unix Makefiles' -S '/home/nikolfax/programming/c++/Pythia-project-tree-creator' -B '/home/nikolfax/programming/c++/Pythia-project-tree-creator/cmake-build-release'"
+loading initial cache file CMakeLists(forstatic).txt
+CMake Error: Error processing file: /home/nikolfax/programming/c++/Pythia-project-tree-creator/cmake-build-release/CMakeLists(forstatic).txt
+-- Configuring incomplete, errors occurred!
+See also "/home/nikolfax/programming/c++/Pythia-project-tree-creator/cmake-build-release/CMakeFiles/CMakeOutput.log".

@@ -23,8 +23,6 @@
 #include "TH2F.h"
 
 
-
-
 void showProgressBar(int progress, int total) {
     double ratio = static_cast<double>(progress) / total;
     std::cout << "(required number of D_0 found: " << progress << " | " << total << ") ";
@@ -39,19 +37,62 @@ Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2) {
     return TMath::Sqrt(pow(delta_eta, 2) + pow(delta_phi, 2));
 }
 
+int getId() {
+    std::string fileName = "../status.txt";
+    std::ifstream file(fileName);
+    if (!file.is_open()) {
+        std::cerr << "Error: file not opened" << std::endl;
+        return -1;
+    }
+    int id;
+    std::string temp;
+    file >> temp >> id;
+    file.close();
+    return id;
+}
+
+std::string getStatus() {
+    std::string fileName = "../status.txt";
+    std::ifstream file(fileName);
+    if (!file.is_open()) {
+        std::cerr << "Error: file not opened" << std::endl;
+        return "Error";
+    }
+    std::string temp;
+    file >> temp;
+    file.close();
+    return temp;
+}
+
+bool increaseIdOrChageStatus(int id, std::string status) {
+    std::string fileName = "../status.txt";
+    std::fstream file(fileName, std::ios::out);
+    if (!file.is_open()) {
+        std::cerr << "Error: file not opened" << std::endl;
+        return false;
+    }
+    file << status << std::endl << (id + 1) << std::endl;
+    file.close();
+    return true;
+}
+
 void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
              Float_t &z_val, const unsigned int &requiredNumberOfD_0, unsigned int &numberOfD_0Found,
              Float_t &l11, Float_t &l105, Float_t &l115, Float_t &l12, Float_t &l13, Float_t &l20) {
+
+
     Pythia8::Pythia pythia; //create pythia object
+
 
     {
         std::lock_guard<std::mutex> lock(std::mutex);  // Lock the mutex
         pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
+        pythia.readString("Random:setSeed = on");  // Enable setting of the seed
+        pythia.readString("Random:seed = " + seed);
+        pythia.init();
+
     }
 
-    pythia.readString("Random:setSeed = on");  // Enable setting of the seed
-    pythia.readString("Random:seed = " + seed);
-    pythia.init();
 
     std::list<particleUnit> j_constituents;
     std::map<TString, fastjet::JetDefinition> jetDefs; //map to store jet definitions
