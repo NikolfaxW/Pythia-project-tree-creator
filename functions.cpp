@@ -102,7 +102,7 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
     double pTmin_jet = 5, pThadron = 0.2; //minimum pT for jets and hadrons
     int triggerId = 421; //pdg code of the particle to be found
 
-    double pTMinTrig = 1; //minimum pT for the particle to be found
+    double pTMinTrig = 0; //minimum pT for the particle to be found
     double pTMaxTrig = 5.0;
     double mTemp; //This variable are needed to recount momentum after particle mass resets
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets

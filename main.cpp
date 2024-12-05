@@ -23,7 +23,7 @@
 int main() {
     int id;
     while(true) {
-        if(getStatus() == "false")
+        if(getStatus().compare("false"))
             break;
         while(true){
             id = getId();
@@ -31,7 +31,7 @@ int main() {
                 break;
         }
         while(true){
-            if(increaseIdOrChageStatus(id, "true"))
+            if(increaseIdOrChageStatus(id, "false"))
                 break;
         }
 
