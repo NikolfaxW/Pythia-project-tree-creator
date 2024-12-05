@@ -14,6 +14,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <random>
 
 #include "Pythia8/Pythia.h"
 #include "TVector2.h"
@@ -76,9 +77,49 @@ bool increaseIdOrChageStatus(int id, std::string status) {
     return true;
 }
 
-void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT, Float_t &Jet_Pt, Float_t &rapidity,
-             Float_t &z_val, const unsigned int &requiredNumberOfD_0, unsigned int &numberOfD_0Found,
-             Float_t &l11, Float_t &l105, Float_t &l115, Float_t &l12, Float_t &l13, Float_t &l20) {
+bool areAlmostEqual(Float_t a, Float_t b, int ulp = 1) {
+    // ULP (Units in the Last Place) is the number of steps allowed
+    return std::fabs(a - b) <= std::fabs(std::nextafter(a, b) - a) * ulp;
+}
+
+int randomSeed(){
+    // Seed for reproducibility
+    std::random_device rd; // Use random_device for non-deterministic randomness
+    std::mt19937 gen(rd()); // Mersenne Twister random number engine
+
+    // Define normal distribution with mean and standard deviation
+    double mean = 450000;
+    double stddev = 259807.62;
+    std::normal_distribution<> dist(mean, stddev);
+    return dist(gen);
+}
+
+void mainThreadedSec(const int numThreads,
+                std::string seed,
+                TTree *&T,
+                Float_t &D_0_pT,
+                Float_t &Jet_Pt,
+                Float_t &rapidity,
+                Float_t &z_val,
+                const unsigned int &requiredNumberOfD_0,
+                unsigned int &numberOfD_0Found,
+                Float_t &l11,
+                Float_t &l105,
+                Float_t &l115,
+                Float_t &l12,
+                Float_t &l13,
+                Float_t &l20,
+                Float_t &pl11,
+                Float_t &pl105,
+                Float_t &pl115,
+                Float_t &pl12,
+                Float_t &pl13,
+                Float_t &pl20,
+                TTree *&T2,
+                TTree *&T3,
+                Float_t &isCharged,
+                Float_t &deltaR,
+                Float_t &pT_frac) {
 
 
     Pythia8::Pythia pythia; //create pythia object
@@ -108,7 +149,11 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
 
-    Double_t R_frac, pT_frac, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
+    Double_t R_frac, temp_pT_frac, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
+    Float_t temp_pl11, temp_pl105, temp_pl115, temp_pl12, temp_pl13, temp_pl20;
+    std::vector<Double_t>pT_fracs, delta_R_fracs;
+    pT_fracs.reserve(100);
+    delta_R_fracs.reserve(100);
 
     //define jet finding algorithms here:
     jetDefs["#it{k_{t}} jets, #it{R} = " + std::to_string(R)] = fastjet::JetDefinition(
@@ -185,13 +230,31 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
                 temp_l12 = 0;
                 temp_l13 = 0;
                 temp_l20 = 0;
+                temp_pl11 = -1;
+                temp_pl105 = -1;
+                temp_pl115 = -1;
+                temp_pl12 = -1;
+                temp_pl13 = -1;
+                temp_pl20 = -1;
 
-
+                delta_R_fracs.clear();
+                pT_fracs.clear();
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to calculate l11, l105, l115, l12, l13, l20
-                    if (c.user_info<MyInfo>().pdg_id() != triggerId && !c.user_info<MyInfo>().isCharged())
-                        continue; //skip not D_0 and neutral particles
-                    pT_frac = c.pt() / jet.pt();
-                    R_frac = delta_R(jet.eta(), jet.phi(), c.eta(), c.phi()) / R;
+                    if(c.user_info<MyInfo>().isCharged()){
+                        std::lock_guard<std::mutex> lock(std::mutex);
+                        isCharged = 1;
+                        T3->Fill();
+                    } else{
+                        std::lock_guard<std::mutex> lock(std::mutex);
+                        isCharged = -1;
+                        T3->Fill();
+                        if(c.user_info<MyInfo>().pdg_id() != triggerId) continue;
+                    }
+
+                    temp_pT_frac = c.pt() / jet.pt();
+                    pT_fracs.push_back(temp_pT_frac);
+                    delta_R_fracs.push_back(delta_R(jet.eta(), jet.phi(), c.eta(), c.phi()) / R);
+                    R_frac = delta_R_fracs.back();
                     temp_l11 += pT_frac * R_frac;
                     temp_l105 += pT_frac * pow(R_frac, 0.5);
                     temp_l115 = pT_frac * pow(R_frac, 1.5);
@@ -200,6 +263,23 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
                     temp_l20 += pow(pT_frac, 2);
                 }
 
+                if(temp_l11 > 1 ) temp_pl11 = 1;
+                if(temp_l105 > 1 ) temp_pl105 = 1;
+                if(temp_l115 > 1 ) temp_pl115 = 1;
+                if(temp_l12 > 1 ) temp_pl12 = 1;
+                if(temp_l13 > 1 ) temp_pl13 = 1;
+                if(temp_l20 > 1 ) temp_pl20 = 1;
+                if(areAlmostEqual(temp_pl11,1)|| areAlmostEqual(temp_pl105,1) || areAlmostEqual(temp_pl115,1)
+                || areAlmostEqual(temp_pl12,1)||areAlmostEqual(temp_pl13,1) || areAlmostEqual(temp_pl20,1)){
+                    std::lock_guard<std::mutex> lock(std::mutex);
+                    while(!delta_R_fracs.empty()){
+                        pT_frac = pT_fracs.back();
+                        pT_fracs.pop_back();
+                        deltaR = delta_R_fracs.back();
+                        delta_R_fracs.pop_back();
+                        T2->Fill();
+                    }
+                }
 
                 {
                     //! Not safe to fill the tree from multiple threads
@@ -210,18 +290,107 @@ void mainSec(const int numThreads, std::string seed, TTree *&T, Float_t &D_0_pT,
                     l12 = temp_l12;
                     l13 = temp_l13;
                     l20 = temp_l20;
+                    pl11 = temp_pl11;
+                    pl105 = temp_pl105;
+                    pl115 = temp_pl115;
+                    pl12 = temp_pl12;
+                    pl13 = temp_pl13;
+                    pl20 = temp_pl20;
                     D_0_pT = temp_D_0_pT;
                     z_val = temp_z_val;
                     Jet_Pt = jet.pt();
                     rapidity = jet.rapidity();
                     T->Fill();  // Fill the data vector safely
                     ++numberOfD_0Found;
-                    if (numberOfD_0Found % 10 == 0) showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
+//                    if (numberOfD_0Found % 10 == 0)
+                        showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
                 }
             }
 
         }
     }
+}
+
+void mainSec(int id){
+    unsigned int requiredNumberOfD_0InOneFile = 100000;
+    unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    int seed = randomSeed();
+    std::thread **alocatedThreads = new std::thread *[numThreads];
+    std::string pathToTheFile = "../results/";
+    std::string filename = std::to_string(id) + ','+ std::to_string(requiredNumberOfD_0InOneFile) + ',' + std::to_string(seed) + ".root";
+    TTree *T = new TTree("T", "saves Pt, pseudo rapidity and phi of an D_0 jet"); //create a tree to store the data
+    TTree *T2 = new TTree("T2", "saves important dubug data(delta R, pT_frac)");
+    TTree *T3 = new TTree("T3", "saves important dubug data(charrge)");
+    TFile *file = new TFile((pathToTheFile + filename).c_str(),
+                            "RECREATE"); //create a file to store the tree as an output
+
+    Float_t D_0_pT = -999, Jet_pT = -999, rapidity = -999, z_val = -999; //variables to store data and used in tree
+    Float_t l11 = -1000, l105 = -1000, l115 = -1000, l12 = -1000, l13 = -1000, l20 = -1000;
+    Float_t isCharged = -1000, deltaR = -1000, pT_frac = -1000, pl11 = -1000, pl105 = -1000, pl115 = -1000, pl12 = -1000, pl13 = -1000, pl20 = -1000;
+
+    //set tree branches
+    T->Branch("l11", &l11, "l11");
+    T->Branch("l105", &l105, "l105");
+    T->Branch("l115", &l115, "l115");
+    T->Branch("l12", &l12, "l12");
+    T->Branch("l13", &l13, "l13");
+    T->Branch("l20", &l20, "l20");
+    T->Branch("pl11", &pl11, "pl11");
+    T->Branch("pl105", &pl105, "pl105");
+    T->Branch("pl115", &pl115, "pl115");
+    T->Branch("pl12", &pl12, "pl12");
+    T->Branch("pl13", &pl13, "pl13");
+    T->Branch("pl20", &pl20, "pl20");
 
 
+    T->Branch("z_val", &z_val, "z_val");
+    T->Branch("D_0_pT", &D_0_pT, "D_0_pT");
+    T->Branch("jet_pT", &Jet_pT, "jet_pT");
+    T->Branch("eta", &rapidity, "eta");
+
+    T3->Branch("isCharged", &isCharged, "isCharged");
+    T2->Branch("deltaR", &deltaR, "deltaR");
+    T2->Branch("pT_frac", &pT_frac, "deltaR");
+    for (int i = 0; i < numThreads; i++){
+        alocatedThreads[i] = new std::thread(mainThreadedSec, numThreads,
+                                             std::to_string(seed),
+                                             std::ref(T),
+                                             std::ref(D_0_pT),
+                                             std::ref(Jet_pT),
+                                             std::ref(rapidity),
+                                             std::ref(z_val),
+                                             std::ref(requiredNumberOfD_0InOneFile),
+                                             std::ref(foundNumberOfD_0),
+                                             std::ref(l11),
+                                             std::ref(l105),
+                                             std::ref(l115),
+                                             std::ref(l12),
+                                             std::ref(l13),
+                                             std::ref(l20),
+                                             std::ref(pl11),
+                                             std::ref(pl105),
+                                             std::ref(pl115),
+                                             std::ref(pl12),
+                                             std::ref(pl13),
+                                             std::ref(pl20),
+                                             std::ref(T2),
+                                             std::ref(T3),
+                                             std::ref(isCharged),
+                                             std::ref(deltaR),
+                                             std::ref(pT_frac));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        alocatedThreads[i]->join();
+        std::cout <<"Thread " << i + 1 << " joined" << std::endl;
+    }
+
+    T->Print(); //prints the tree structure
+    T2->Print();
+    T3->Print();
+    T->Write();
+    T2->Write();
+    T3->Write();
+    delete file;
+    delete T;
 }
