@@ -150,6 +150,7 @@ void mainThreadedSec(const int numThreads,
 
 
     Double_t R_frac, temp_pT_frac, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
+    Double_t delta_R_temp;
     Float_t temp_pl11, temp_pl105, temp_pl115, temp_pl12, temp_pl13, temp_pl20;
     std::vector<Double_t>pT_fracs, delta_R_fracs;
     pT_fracs.reserve(100);
@@ -253,8 +254,9 @@ void mainThreadedSec(const int numThreads,
 
                     temp_pT_frac = c.pt() / jet.pt();
                     pT_fracs.push_back(temp_pT_frac);
-                    delta_R_fracs.push_back(delta_R(jet.eta(), jet.phi(), c.eta(), c.phi()) / R);
-                    R_frac = delta_R_fracs.back();
+                    delta_R_temp = delta_R(jet.eta(), jet.phi(), c.eta(), c.phi());
+                    R_frac = delta_R_temp / R;
+                    delta_R_fracs.push_back(delta_R_temp);
                     temp_l11 += pT_frac * R_frac;
                     temp_l105 += pT_frac * pow(R_frac, 0.5);
                     temp_l115 = pT_frac * pow(R_frac, 1.5);
