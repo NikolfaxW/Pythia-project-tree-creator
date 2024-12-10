@@ -23,21 +23,31 @@
 int main() {
     bool DEBUG = false;
     int id;
+//    if (DEBUG)
+//        mainSec(0);
+//    else
+//        while (true) {
+//            if (getStatus().compare("false"))
+//                break;
+//            while (true) {
+//                id = getId();
+//                if (id != -1)
+//                    break;
+//            }
+//            while (true) {
+//                if (increaseIdOrChageStatus(id, "false"))
+//                    break;
+//            }
+//            mainSec(id);
+//        }
     if (DEBUG)
         mainSec(0);
     else
         while (true) {
             if (getStatus().compare("false"))
                 break;
-            while (true) {
-                id = getId();
-                if (id != -1)
-                    break;
-            }
-            while (true) {
-                if (increaseIdOrChageStatus(id, "false"))
-                    break;
-            }
+
+            id++;
             mainSec(id);
         }
 

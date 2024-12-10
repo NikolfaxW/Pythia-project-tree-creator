@@ -316,7 +316,8 @@ void mainThreadedSec(const int numThreads,
 void mainSec(int id){
     unsigned int requiredNumberOfD_0InOneFile = 100000;
     unsigned int foundNumberOfD_0 = 0; //to store number of D_0 particles found
-    unsigned int numThreads = std::thread::hardware_concurrency();
+//    unsigned int numThreads = std::thread::hardware_concurrency();
+    unsigned int numThreads = 1;
     int seed = randomSeed();
     std::thread **alocatedThreads = new std::thread *[numThreads];
     std::string pathToTheFile = "../results/";
