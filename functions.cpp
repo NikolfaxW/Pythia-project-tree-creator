@@ -149,8 +149,8 @@ void mainThreadedSec(const int numThreads,
     Pythia8::Vec4 pTemp; //This variable are needed to recount momentum after particle mass resets
 
 
-    Double_t R_frac, temp_pT_frac, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
-    Double_t delta_R_temp;
+    Double_t R_frac, temp_pT_frac = -1000, temp_z_val = -1000, temp_D_0_pT, temp_l11, temp_l105, temp_l115, temp_l12, temp_l13, temp_l20;
+    Double_t delta_R_temp = -1000;
     Float_t temp_pl11, temp_pl105, temp_pl115, temp_pl12, temp_pl13, temp_pl20;
     std::vector<Double_t>pT_fracs, delta_R_fracs;
     pT_fracs.reserve(100);
@@ -194,6 +194,8 @@ void mainThreadedSec(const int numThreads,
                                                                                           mTemp)); //recounts 4 momentum and energy after mass reset
                 particleTemp.set_user_info(
                         new MyInfo(p.idAbs(), i, event[i].isCharged())); //adds additional info to the particle
+                 //! it is better to do eta cut here?
+                 //eta of constituent is bigger than 1
                 fjInputs.push_back(particleTemp); //saves the particle to the vector to be clustered
 
             }
@@ -207,6 +209,7 @@ void mainThreadedSec(const int numThreads,
 
 
         for (auto jetDef: jetDefs) { //for each jet definition runs jet clustering sequence, then saves it to ROOT tree
+            //!eta selecetion first then cluster
             selectedJets.clear(); //empties the vector of jets - prevents from saving jets from previous e2vent
             fastjet::ClusterSequence clusterSequence(fjInputs, jetDef.second); //sets up the cluster sequence
             auto jets = sorted_by_pt(clusterSequence.inclusive_jets(0)); //runs the clustering and sorts jets by pT
@@ -257,14 +260,14 @@ void mainThreadedSec(const int numThreads,
                     delta_R_temp = delta_R(jet.eta(), jet.phi(), c.eta(), c.phi());
                     R_frac = delta_R_temp / R;
                     delta_R_fracs.push_back(delta_R_temp);
-                    temp_l11 += pT_frac * R_frac;
-                    temp_l105 += pT_frac * pow(R_frac, 0.5);
-                    temp_l115 = pT_frac * pow(R_frac, 1.5);
-                    temp_l12 += pT_frac * pow(R_frac, 2);
-                    temp_l13 += pT_frac * pow(R_frac, 3);
-                    temp_l20 += pow(pT_frac, 2);
+                    temp_l11 += temp_pT_frac * R_frac;
+                    temp_l105 += temp_pT_frac * pow(R_frac, 0.5);
+                    temp_l115 = temp_pT_frac * pow(R_frac, 1.5);
+                    temp_l12 += temp_pT_frac * pow(R_frac, 2);
+                    temp_l13 += temp_pT_frac * pow(R_frac, 3);
+                    temp_l20 += pow(temp_pT_frac, 2);
                 }
-
+                //! not final results
                 if(temp_l11 > 1 ) temp_pl11 = 1;
                 if(temp_l105 > 1 ) temp_pl105 = 1;
                 if(temp_l115 > 1 ) temp_pl115 = 1;
