@@ -12,9 +12,9 @@
 
 void showProgressBar(int progress, int total);
 Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2);
-int getId(); //Ok
+long long int getId(); //Ok
 std::string getStatus(); //Ok
-bool increaseIdOrChageStatus(int id, std::string status); //ok status can be "true" or "false" !!!
+bool increaseIdOrChageStatus(long long int n0, long long int inc, std::string status); //ok status can be "true" or "false" !!!
 int randomSeed();
 void mainThreadedSec(const int numThreads,
                 std::string seed,

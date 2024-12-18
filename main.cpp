@@ -25,6 +25,7 @@ int main() {
     while(getStatus() == "true"){
         ATTree tree;
         tree.runEvents();
+        increaseIdOrChageStatus(getId(), tree.getN(), "true");
         tree.saveTree();
     }
 

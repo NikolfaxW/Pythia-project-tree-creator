@@ -40,10 +40,15 @@ ATTree::ATTree(){
     angT->Branch("l12", &l12, "l12/D");
     angT->Branch("l13", &l13, "l13/D");
     angT->Branch("l20", &l20, "l20/D");
+    n = 0;
 }
 
 ATTree::~ATTree(){
     delete angT;
+}
+
+long long ATTree::getN() {
+    return n;
 }
 
 Double_t ATTree::delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2) {
@@ -109,7 +114,10 @@ void ATTree::runEvents() {
     std::vector<fastjet::PseudoJet> selectedJets; //to store jets after all cuts
 
     for (int iEvent = 0; numberOfD_0Found < requiredNumberOfD_0; ++iEvent) { //loop over needed number of events
-        if (!pythia.next()) continue; //generate next event, if it is not possible, continue
+        if (!pythia.next()) {
+            n++;
+            continue; //generate next event, if it is not possible, continue
+        }
         int idxD = -1; // to store index of the D_0 particle in the event
         for (int i = pythia.event.size() - 1; i > 0; i--) { //goes through all particles generated in event
             if (pythia.event[i].idAbs() == triggerId &&

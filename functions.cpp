@@ -38,14 +38,14 @@ Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2) {
     return TMath::Sqrt(pow(delta_eta, 2) + pow(delta_phi, 2));
 }
 
-int getId() {
+long long int getId() {
     std::string fileName = "../status.txt";
     std::ifstream file(fileName);
     if (!file.is_open()) {
         std::cerr << "Error: file not opened" << std::endl;
         return -1;
     }
-    int id;
+    long long int id;
     std::string temp;
     file >> temp >> id;
     file.close();
@@ -65,14 +65,14 @@ std::string getStatus() {
     return temp;
 }
 
-bool increaseIdOrChageStatus(int id, std::string status) {
+bool increaseIdOrChageStatus(long long int n0, long long int inc, std::string status) {
     std::string fileName = "../status.txt";
     std::fstream file(fileName, std::ios::out);
     if (!file.is_open()) {
         std::cerr << "Error: file not opened" << std::endl;
         return false;
     }
-    file << status << std::endl << (id + 1) << std::endl;
+    file << status << std::endl << (n0+inc) << std::endl;
     file.close();
     return true;
 }

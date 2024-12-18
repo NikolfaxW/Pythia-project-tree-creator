@@ -28,10 +28,11 @@ class ATTree {
 
     Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2);
     void showProgressBar(int progress, int total);
-
+    long long int n;
 public:
     ATTree();
     ~ATTree();
+    long long int getN();
 
     void genSeed();
     void runEvents();
