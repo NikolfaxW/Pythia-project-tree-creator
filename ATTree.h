@@ -24,7 +24,7 @@ class ATTree {
 
     Pythia8::Pythia pythia;
 
-    long unsigned int requiredNumberOfD_0 = 1000;
+    long unsigned int requiredNumberOfD_0 = 100000;
 
     Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2);
     void showProgressBar(int progress, int total);
