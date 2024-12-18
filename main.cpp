@@ -15,42 +15,18 @@
 #include "TFile.h"
 
 #include "functions.h"
+#include "ATTree.h"
 
 
 //!pTmin_jet - minimum pT for jets is not used
 
 
 int main() {
-    bool DEBUG = false;
-    int id;
-//    if (DEBUG)
-//        mainSec(0);
-//    else
-//        while (true) {
-//            if (getStatus().compare("false"))
-//                break;
-//            while (true) {
-//                id = getId();
-//                if (id != -1)
-//                    break;
-//            }
-//            while (true) {
-//                if (increaseIdOrChageStatus(id, "false"))
-//                    break;
-//            }
-//            mainSec(id);
-//        }
-    if (DEBUG)
-        mainSec(0);
-    else
-        while (true) {
-            if (getStatus().compare("false"))
-                break;
-
-            id++;
-            mainSec(id);
-        }
-
+    while(getStatus() == "true"){
+        ATTree tree;
+        tree.runEvents();
+        tree.saveTree();
+    }
 
     return 0;
 }

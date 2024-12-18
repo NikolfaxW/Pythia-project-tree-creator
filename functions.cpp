@@ -20,7 +20,7 @@
 #include "TVector2.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
-#include "TCanvas.h"
+
 #include "TH2F.h"
 
 
@@ -308,7 +308,7 @@ void mainThreadedSec(const int numThreads,
                     T->Fill();  // Fill the data vector safely
                     ++numberOfD_0Found;
 //                    if (numberOfD_0Found % 10 == 0)
-                        showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
+                    showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
                 }
             }
 
