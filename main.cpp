@@ -22,10 +22,14 @@
 
 
 int main() {
-    while(getStatus() == "true"){
+    std::string status;
+    while(true){
+        status = getStatus();
+        if(status.compare("true") != 0)
+            break;
         ATTree tree;
         tree.runEvents();
-        increaseIdOrChageStatus(getId(), tree.getN(), "true");
+        increaseIdOrChageStatus(getId(), tree.getN(), getStatus());
         tree.saveTree();
     }
 
