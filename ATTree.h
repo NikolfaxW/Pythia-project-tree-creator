@@ -16,21 +16,23 @@
 
 
 class ATTree {
-    TTree *angT;
+    TTree *angT, *eventsT;
     Double_t  D_0_pT = -1000, Jet_pT = -1000, rapidity = -1000, z_val = -1000, l11 = -1000, l105 = -1000, l115 = -1000,
     l12 = -1000, l13 = -1000, l20 = -1000;
-    std::string seed;
+    int seed;
+    std::string iterator;
     bool isSeedSet = false;
 
     Pythia8::Pythia pythia;
 
-    long unsigned int requiredNumberOfD_0 = 100000;
+    long unsigned int requiredNumberOfD_0 = 1000;
 
     Double_t delta_R(Double_t eta1, Double_t phi1, Double_t eta2, Double_t phi2);
     void showProgressBar(int progress, int total);
     long long int n;
 public:
     ATTree();
+    ATTree(const long long int _iterator);
     ~ATTree();
     long long int getN();
 

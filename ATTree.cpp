@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <fstream>
 
 #include "particleUnit.h"
 #include "MyInfo.h"
@@ -28,6 +29,7 @@
 
 ATTree::ATTree(){
     angT = new TTree("angT", "saves z_value, pseudo rapidity and phi, jet_pT, D_0_pT and angularities");
+    eventsT = new TTree("eveT", "saves number of events done in the simulation(yes, one number)");
 
     angT->Branch("z_val", &z_val, "z_val/D");
     angT->Branch("D_0_pT", &D_0_pT, "D_0_pT/D");
@@ -40,11 +42,42 @@ ATTree::ATTree(){
     angT->Branch("l12", &l12, "l12/D");
     angT->Branch("l13", &l13, "l13/D");
     angT->Branch("l20", &l20, "l20/D");
+    angT->Branch("l20", &l20, "l20/D");
+
     n = 0;
+    eventsT->Branch("n", &n, "n/I");
+    eventsT->Branch("seed", &seed, "seed/I");
+
+}
+
+ATTree::ATTree(const long long int _iterator){
+    iterator = std::to_string(_iterator);
+
+    angT = new TTree("angT", "saves z_value, pseudo rapidity and phi, jet_pT, D_0_pT and angularities");
+    eventsT = new TTree("eveT", "saves number of events done in the simulation(yes, one number)");
+
+    angT->Branch("z_val", &z_val, "z_val/D");
+    angT->Branch("D_0_pT", &D_0_pT, "D_0_pT/D");
+    angT->Branch("jet_pT", &Jet_pT, "jet_pT/D");
+    angT->Branch("eta", &rapidity, "eta/D");
+
+    angT->Branch("l11", &l11, "l11/D");
+    angT->Branch("l105", &l105, "l105/D");
+    angT->Branch("l115", &l115, "l115/D");
+    angT->Branch("l12", &l12, "l12/D");
+    angT->Branch("l13", &l13, "l13/D");
+    angT->Branch("l20", &l20, "l20/D");
+    angT->Branch("l20", &l20, "l20/D");
+
+    n = 0;
+    eventsT->Branch("n", &n, "n/I");
+    eventsT->Branch("seed", &seed, "seed/I");
+
 }
 
 ATTree::~ATTree(){
     delete angT;
+    delete eventsT;
 }
 
 long long ATTree::getN() {
@@ -73,7 +106,7 @@ void ATTree::genSeed() {
     double mean = 450000;
     double stddev = 259807.62;
     std::normal_distribution<> dist(mean, stddev);
-    seed = std::to_string( static_cast<int>( abs((std::round(dist(gen))))));
+    seed = static_cast<int>( abs((std::round(dist(gen)))));
     isSeedSet = true;
 }
 
@@ -83,7 +116,7 @@ void ATTree::runEvents() {
     }
     pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
     pythia.readString("Random:setSeed = on");  // Enable setting of the seed
-    pythia.readString("Random:seed = " + seed);
+    pythia.readString("Random:seed = " + std::to_string(seed));
     pythia.init();
 
     long unsigned int numberOfD_0Found = 0;
@@ -208,10 +241,17 @@ void ATTree::runEvents() {
 }
 
 void ATTree::saveTree() {
-    std::string path = "../results/" +seed + ".root";
+
+    std::string path = "../results/" + iterator + ".root";
     TFile *file = new TFile(path.c_str(), "RECREATE");
     angT->Print();
     angT->Write();
+    {
+        eventsT->Fill();
+        eventsT->Print();
+        eventsT->Write();
+    }
     file->Close();
     delete file;
+//    std::fstream temp = new std::fstream("")
 }
