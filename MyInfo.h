@@ -13,12 +13,10 @@
 //simple class to store additional info for fastjet
 class MyInfo : public fastjet::PseudoJet::UserInfoBase {
 public:
-    MyInfo(const int &id, const int &i, const bool & is_charged) : _pdg_id(id), _id(i), _is_charged(is_charged) {}  //stores ddg codes of the particle
+    MyInfo(const int &id, const int &i, const bool & is_charged) : _pdg_id(id), _id(i), _is_charged(is_charged)  {}  //stores ddg codes of the particle
 
     int pdg_id() const { return _pdg_id; }
-
     int id() const { return _id; }
-
     bool isCharged() const { return _is_charged;}
 
 protected:

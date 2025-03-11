@@ -23,13 +23,15 @@
 
 int main() {
     std::string status;
+    long long int id;
     while(true){
         status = getStatus();
+        id = getId();
         if(status.compare("true") != 0)
             break;
-        ATTree tree;
+        ATTree tree(id);
         tree.runEvents();
-        increaseIdOrChageStatus(getId(), tree.getN(), getStatus());
+        increaseIdOrChageStatus(id, 1, getStatus());
         tree.saveTree();
     }
 

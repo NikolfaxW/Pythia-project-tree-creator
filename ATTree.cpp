@@ -33,6 +33,10 @@ ATTree::ATTree(){
     angT->Branch("D_0_pT", &D_0_pT, "D_0_pT/D");
     angT->Branch("jet_pT", &Jet_pT, "jet_pT/D");
     angT->Branch("eta", &rapidity, "eta/D");
+    angT->Branch("tcs", &triggered_particle_crossection, "tcs/D");
+    angT->Branch("tcsf", &triggered_particle_crossection_fraction, "tcsf/D");
+    angT->Branch("cs", &total_eve_crossection, "cs/D");
+    angT->Branch("csf", &total_eve_crossection_fraction, "csf/D");
 
     angT->Branch("l11", &l11, "l11/D");
     angT->Branch("l105", &l105, "l105/D");
@@ -40,11 +44,39 @@ ATTree::ATTree(){
     angT->Branch("l12", &l12, "l12/D");
     angT->Branch("l13", &l13, "l13/D");
     angT->Branch("l20", &l20, "l20/D");
+
     n = 0;
+}
+
+ATTree::ATTree(int _id){
+    id = _id;
+    angT = new TTree("angT", "saves z_value, pseudo rapidity and phi, jet_pT, D_0_pT and angularities");
+    infT = new TTree("infT", "ssaves seed and number of events");
+
+    angT->Branch("z_val", &z_val, "z_val/D");
+    angT->Branch("D_0_pT", &D_0_pT, "D_0_pT/D");
+    angT->Branch("jet_pT", &Jet_pT, "jet_pT/D");
+    angT->Branch("eta", &rapidity, "eta/D");
+    angT->Branch("tcs", &triggered_particle_crossection, "tcs/D");
+    angT->Branch("tcsf", &triggered_particle_crossection_fraction, "tcsf/D");
+    angT->Branch("cs", &total_eve_crossection, "cs/D");
+    angT->Branch("csf", &total_eve_crossection_fraction, "csf/D");
+
+    angT->Branch("l11", &l11, "l11/D");
+    angT->Branch("l105", &l105, "l105/D");
+    angT->Branch("l115", &l115, "l115/D");
+    angT->Branch("l12", &l12, "l12/D");
+    angT->Branch("l13", &l13, "l13/D");
+    angT->Branch("l20", &l20, "l20/D");
+
+    n = 0;
+    infT->Branch("seed", &seed, "seed/I");
+    infT->Branch("n", &n, "n/L");
 }
 
 ATTree::~ATTree(){
     delete angT;
+    delete infT;
 }
 
 long long ATTree::getN() {
@@ -73,7 +105,7 @@ void ATTree::genSeed() {
     double mean = 450000;
     double stddev = 259807.62;
     std::normal_distribution<> dist(mean, stddev);
-    seed = std::to_string( static_cast<int>( abs((std::round(dist(gen))))));
+    seed =  static_cast<int>( abs((std::round(dist(gen)))));
     isSeedSet = true;
 }
 
@@ -83,7 +115,7 @@ void ATTree::runEvents() {
     }
     pythia.readFile("../config1.cmnd"); //read config file and intialize pythia
     pythia.readString("Random:setSeed = on");  // Enable setting of the seed
-    pythia.readString("Random:seed = " + seed);
+    pythia.readString("Random:seed = " + std::to_string(seed));
     pythia.init();
 
     long unsigned int numberOfD_0Found = 0;
@@ -113,9 +145,9 @@ void ATTree::runEvents() {
     std::vector<fastjet::PseudoJet> fjInputs; //to store particles to be clustered
     std::vector<fastjet::PseudoJet> selectedJets; //to store jets after all cuts
 
-    for (int iEvent = 0; numberOfD_0Found < requiredNumberOfD_0; ++iEvent) { //loop over needed number of events
+    long long int iEvent;
+    for (iEvent = 0; numberOfD_0Found < requiredNumberOfD_0; ++iEvent) { //loop over needed number of events
         if (!pythia.next()) {
-            n++;
             continue; //generate next event, if it is not possible, continue
         }
         int idxD = -1; // to store index of the D_0 particle in the event
@@ -174,6 +206,8 @@ void ATTree::runEvents() {
                         D_0_pT = c.pt(); //saves pT of the D_0 particle
                         Jet_pT = jet.pt();
                         rapidity = jet.rapidity();
+                        triggered_particle_crossection = pythia.info.sigmaGen(c.user_info<MyInfo>().id());
+                        triggered_particle_crossection_fraction = triggered_particle_crossection/pythia.info.weightSum();
                         break;
                     }
                 }
@@ -184,11 +218,13 @@ void ATTree::runEvents() {
                 l12 = 0;
                 l13 = 0;
                 l20 = 0;
+                total_eve_crossection_fraction = 0;
 
                 for (const auto &c: jet.constituents()) { //loop through all jet constituents to calculate l11, l105, l115, l12, l13, l20
                     if(not c.user_info<MyInfo>().isCharged()) continue;
                     pT_frac = c.pt() / jet.pt();
                     R_frac = delta_R(jet.eta(), jet.phi(), c.eta(), c.phi())/R;
+                    total_eve_crossection += pythia.info.sigmaGen(c.user_info<MyInfo>().id());
                     l11 += pT_frac * R_frac;
                     l105 += pT_frac * pow(R_frac, 0.5);
                     l115 = pT_frac * pow(R_frac, 1.5);
@@ -196,7 +232,7 @@ void ATTree::runEvents() {
                     l13 += pT_frac * pow(R_frac, 3);
                     l20 += pow(pT_frac, 2);
                 }
-
+                total_eve_crossection_fraction = total_eve_crossection/pythia.info.weightSum();
                 angT->Fill();
                 ++numberOfD_0Found;
                 showProgressBar(numberOfD_0Found, requiredNumberOfD_0);
@@ -205,13 +241,17 @@ void ATTree::runEvents() {
 
         }
     }
+    n = iEvent;
+    infT->Fill();
 }
 
 void ATTree::saveTree() {
-    std::string path = "../results/" +seed + ".root";
+    std::string path = "../results/" + std::to_string(id) + ".root";
     TFile *file = new TFile(path.c_str(), "RECREATE");
     angT->Print();
     angT->Write();
+    infT->Print();
+    infT->Write();
     file->Close();
     delete file;
 }
